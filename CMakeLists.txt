@@ -70,6 +70,7 @@ set(PROJECT_SOURCES
         usbcamera12bit.cpp usbcamera12bit.h
         tcpsender.cpp tcpsender.h
         tcpreader.cpp tcpreader.h
+        nnforwarder.cpp nnforwarder.h
 
 )
 
@@ -99,7 +100,7 @@ target_link_libraries(VideoProcessingTest PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
 
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
-    target_link_libraries(progname ${Boost_LIBRARIES})
+    target_link_libraries(VideoProcessingTest ${Boost_LIBRARIES})
 endif()
 
 set_target_properties(VideoProcessingTest PROPERTIES
