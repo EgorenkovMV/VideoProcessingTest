@@ -33,7 +33,7 @@ void TcpReader::setup(const QSize &size)
 
     context = avcodec_alloc_context3(codec);
 
-    qDebug() << "\n\tTcpSender::setup";
+    qDebug() << "\n\tTcpReader::setup";
 
     context->width = size.width();
     context->height = size.height();
@@ -99,22 +99,6 @@ void TcpReader::decodePacket(AVPacket *packet)
     while (err >= 0) {
         err = avcodec_receive_frame(context, frameYUV);
         if (not err) {
-
-//            /* Y */
-//            for(int y = 0; y < frameYUV->height; y++) {
-//                for(int x = 0; x < frameYUV->width; x++) {
-//                    frameYUV->data[0][y * frameYUV->linesize[0] + x] = 0;
-//                }
-//            }
-
-//            /* Cb and Cr */
-//            for(int y = 0; y < frameYUV->height / 2; y++) {
-//                for(int x = 0; x < frameYUV->width / 2; x++) {
-//                    frameYUV->data[1][y * frameYUV->linesize[1] + x] = 0;
-//                    frameYUV->data[2][y * frameYUV->linesize[2] + x] = 0;
-//                }
-//            }
-
             sws_scale(imgConvertCtx, frameYUV->data, frameYUV->linesize, 0,
                       context->height, frameRGB->data, frameRGB->linesize);
 
@@ -128,8 +112,6 @@ void TcpReader::decodePacket(AVPacket *packet)
         }
         qDebug() << "decoding frame: avcodec_receive_frame" << err;
     }
-
-    av_packet_free(&packet);
 }
 
 void TcpReader::pause()

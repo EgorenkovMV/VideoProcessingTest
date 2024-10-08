@@ -4,6 +4,11 @@
 #include <QDebug>
 #include <QtConcurrent>
 
+namespace Config {
+bool useNNForwarder = true;
+float debugFps = 25.f;
+}
+
 MainWidget::MainWidget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::MainWidget)
@@ -11,6 +16,7 @@ MainWidget::MainWidget(QWidget *parent)
     ui->setupUi(this);
 
     stream = new IpCamera();
+
     connect(stream, &StreamInterface::frameReady, this, &MainWidget::updateView, Qt::QueuedConnection);
 
     connect(ui->pbStop, &QPushButton::clicked, [this] () {
@@ -76,9 +82,15 @@ MainWidget::MainWidget(QWidget *parent)
     connect(sender, &TcpSender::receivedPacket, reader, &TcpReader::decodePacket);
     connect(reader, &TcpReader::frameDecoded, this, &MainWidget::updateViewFromTcpReader);
 
+    connect(ui->sbPortReceiver, &QSpinBox::valueChanged, sender, &TcpSender::listenToPort);
+    sender->listenToPort(ui->sbPortReceiver->value());
+
     connect(ui->pbSetUpReader, &QPushButton::clicked, [this] (int index) {
         reader->setup({ui->sbReaderWidth->value(), ui->sbReaderHeight->value()});
     });
+
+    forwarder = new NNForwarder(this);
+    forwarder->setFps(Config::debugFps);
 
 }
 
@@ -86,13 +98,23 @@ MainWidget::~MainWidget()
 {
     stream->stopFlag.test_and_set();
     stream->commitSudokuFlag.test_and_set();
+    TcpSender *sender;
+    TcpReader *reader;
+    NNForwarder *forwarder;
     delete ui;
 }
 
 void MainWidget::updateView()
 {
     stream->mutex.lock();
-    QPixmap pm = QPixmap::fromImage(stream->lastFrame);
+    QPixmap pm;
+    if (Config::useNNForwarder) {
+        QImage nnResult = forwarder->forward(stream->lastFrame);
+        pm = QPixmap::fromImage(nnResult);
+    }
+    else {
+        pm = QPixmap::fromImage(stream->lastFrame);
+    }
     sender->sendFrame(stream->lastFrame);
     stream->mutex.unlock();
 

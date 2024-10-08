@@ -21,8 +21,6 @@ public:
     void stop() override;
     void deleteSelf() override;
 
-    AVFrame	*lastNativeFrame;   ////// debug
-
 private:
     void startWrapper();
     int decodePacket(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFrame *pFrame, AVCodecParameters *pCodecParameters);

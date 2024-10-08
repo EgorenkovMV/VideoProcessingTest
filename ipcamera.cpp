@@ -79,7 +79,6 @@ void IpCamera::startWrapper()
         AVCodec *pLocalCodec = NULL;
 
         // finds the registered decoder for a codec ID
-        // https://ffmpeg.org/doxygen/trunk/group__lavc__decoding.html#ga19a0ca553277f019dd5b0fec6e1f9dca
         pLocalCodec = avcodec_find_decoder(pLocalCodecParameters->codec_id);
 
         if (pLocalCodec == NULL) {
@@ -155,7 +154,8 @@ void IpCamera::startWrapper()
     while (av_read_frame(pFormatContext, pPacket) >= 0)
     {
         if (pPacket->stream_index == video_stream_index) {
-//            qDebug() << "AVPacket->pts " << pPacket->pts;
+            pa.makeNote("new frame! Restarting timer...");
+            pa.setStartingTime();
             response = decodePacket(pPacket, pCodecContext, pFrame, pCodecParameters);
             if (response < 0) break;
 
@@ -215,12 +215,6 @@ int IpCamera::decodePacket(AVPacket *pPacket, AVCodecContext *pCodecContext, AVF
             return response;
         }
 
-        ////////////// debug
-        mutex.lock();
-        lastNativeFrame = pFrame;
-        mutex.unlock();
-        emit nativeFrameReady();
-        //////////////
 
         if (response >= 0) {
 //            qDebug().nospace() <<
@@ -257,7 +251,7 @@ int IpCamera::decodePacket(AVPacket *pPacket, AVCodecContext *pCodecContext, AVF
             emit frameReady();
         }
     }
-    av_frame_unref(pFrameRGB);
+    av_frame_free(&pFrameRGB);
     if (imgConvertCtx) sws_freeContext(imgConvertCtx);
 
     return 0;

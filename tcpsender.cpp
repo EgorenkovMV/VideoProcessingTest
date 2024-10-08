@@ -1,4 +1,5 @@
 #include "tcpsender.h"
+#include <memory>
 #include <QImage>
 #include <boost/crc.hpp>
 
@@ -17,8 +18,6 @@ TcpSender::TcpSender(QObject *parent)
 
     connect(ser, &QTcpServer::newConnection, this, &TcpSender::acceptConnection);
 
-
-    ser->listen(QHostAddress::Any, 7777);
 }
 
 TcpSender::~TcpSender()
@@ -26,13 +25,15 @@ TcpSender::~TcpSender()
     pause();
     if (soc != nullptr) {
         soc->disconnectFromHost();
+        soc->waitForDisconnected(200);
         delete soc;
         soc = nullptr;
     }
 
+    delete [] frameRGBBuff;
     av_frame_free(&frameRGB);
     av_frame_free(&frameYUV);
-    av_free(packetOut);
+    av_packet_free(&packetOut);
     if (imgConvertCtx) {
         sws_freeContext(imgConvertCtx);
     }
@@ -42,24 +43,37 @@ void TcpSender::establishConnection(const QHostAddress &address, quint16 port)
 {
     if (soc != nullptr) {
         soc->disconnectFromHost();
+        soc->waitForDisconnected(200);
         delete soc;
         soc = nullptr;
     }
 
-    if (ser != nullptr) {
-        delete ser;
-        ser = nullptr;
-    }
+//    if (ser != nullptr) {
+//        delete ser;
+//        ser = nullptr;
+//    }
 
     soc = new QTcpSocket(this);
     soc->connectToHost(address, port);
     setupSocket();
 }
 
+void TcpSender::listenToPort(int port)
+{
+    if (ser == nullptr) {
+        return;
+    }
+    if (ser->isListening()) {
+        ser->close();
+    }
+    ser->listen(QHostAddress::Any, port);
+}
+
 void TcpSender::acceptConnection()
 {
     if (soc != nullptr) {
         soc->disconnectFromHost();
+        soc->waitForDisconnected(200);
         delete soc;
     }
 
@@ -142,11 +156,16 @@ void TcpSender::setup(const QImage &frame)
 
 void TcpSender::sendFrame(const QImage &frame)
 {
+    if (soc == nullptr) {
+        return;
+    }
+
     qDebug() << "\n\tStarted sending frame" << frameCounter;
     if (not isSetUp) {
         setup(frame);
     }
 
+    av_packet_free(&packetOut);
     packetOut = av_packet_alloc();
 
     frameYUV->pts = frameCounter;
@@ -188,8 +207,7 @@ void TcpSender::pause()
         qDebug() << "\n\tTcpSender::pause: flush" << result;
     }
 
-    avcodec_close(context);
-    av_free(context);
+    avcodec_free_context(&context);
 }
 
 void TcpSender::readPackage()
@@ -237,8 +255,6 @@ void TcpSender::readPackage()
 
         // owner of packet must unref it's data
         AVPacket *packetIn = av_packet_alloc();
-        uint8_t *packetBuffer;
-
 
         quint32 crc32Received;
         boost::crc_32_type crc32Calculated;
@@ -246,8 +262,7 @@ void TcpSender::readPackage()
         QDataStream ds {package};
         ds.setByteOrder(QDataStream::BigEndian);
 
-        packetBuffer = new uint8_t[dataSize] ();
-        packetIn->data = packetBuffer;
+        av_new_packet(packetIn, dataSize);
         packetIn->size = dataSize;
 
         ds >> packetIn >> crc32Received;
@@ -261,6 +276,7 @@ void TcpSender::readPackage()
 
         qDebug() << "Package read successfully.";
         emit receivedPacket(packetIn);
+        av_packet_free(&packetIn);    ///???
     }
 }
 

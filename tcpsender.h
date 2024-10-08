@@ -32,6 +32,7 @@ public slots:
     void establishConnection(const QHostAddress &address, quint16 port);
     void sendFrame(const QImage &frame);
     void pause();
+    void listenToPort(int port);
 
 
 private slots:

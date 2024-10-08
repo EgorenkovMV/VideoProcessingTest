@@ -11,6 +11,7 @@
 #include "usbcamera12bit.h"
 #include "tcpsender.h"
 #include "tcpreader.h"
+#include "nnforwarder.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -32,6 +33,9 @@ private:
 
     TcpSender *sender;
     TcpReader *reader;
+
+    NNForwarder *forwarder;
+
 
 private slots:
     void updateView();
