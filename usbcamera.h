@@ -15,7 +15,8 @@ public:
 
     void startStreamingRoutine() override;
     void stop() override;
-    void deleteSelf() override;
+    QImage getLastFrame() override;
+
 
 private:
     QCamera *camera = nullptr;

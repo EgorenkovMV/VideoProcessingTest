@@ -29,6 +29,10 @@ TcpSender::~TcpSender()
         delete soc;
         soc = nullptr;
     }
+    if (ser != nullptr) {
+        delete ser;
+        ser = nullptr;
+    }
 
     delete [] frameRGBBuff;
     av_frame_free(&frameRGB);
@@ -48,10 +52,6 @@ void TcpSender::establishConnection(const QHostAddress &address, quint16 port)
         soc = nullptr;
     }
 
-//    if (ser != nullptr) {
-//        delete ser;
-//        ser = nullptr;
-//    }
 
     soc = new QTcpSocket(this);
     soc->connectToHost(address, port);

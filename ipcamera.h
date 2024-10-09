@@ -19,12 +19,15 @@ public:
 
     void startStreamingRoutine() override;
     void stop() override;
-    void deleteSelf() override;
+    QImage getLastFrame() override;
+
+    QMutex mutex;
 
 private:
+    std::atomic_flag routineFinishedFlag;
+
     void startWrapper();
     int decodePacket(AVPacket *pPacket, AVCodecContext *pCodecContext, AVFrame *pFrame, AVCodecParameters *pCodecParameters);
-    void hibernate();
 
 };
 

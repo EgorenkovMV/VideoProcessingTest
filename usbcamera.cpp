@@ -25,9 +25,9 @@ UsbCamera::UsbCamera(QObject *parent)
     }
 
     stopFlag.test_and_set();
-    commitSudokuFlag.clear();
 
     if (camera == nullptr) {
+        qDebug() << "No camera avaliable";
         return;
     }
 
@@ -38,13 +38,17 @@ UsbCamera::UsbCamera(QObject *parent)
 
 UsbCamera::~UsbCamera()
 {
+    UsbCamera::stop();
     delete camera;
     delete videoSink;
 }
 
 void UsbCamera::startStreamingRoutine()
 {
-    connect(videoSink, &QVideoSink::videoFrameChanged, this, &UsbCamera::resendFrame);
+    stopFlag.clear();
+    if (videoSink != nullptr) {
+        connect(videoSink, &QVideoSink::videoFrameChanged, this, &UsbCamera::resendFrame);
+    }
 }
 
 void UsbCamera::stop()
@@ -55,9 +59,9 @@ void UsbCamera::stop()
     }
 }
 
-void UsbCamera::deleteSelf()
+QImage UsbCamera::getLastFrame()
 {
-    delete this;
+    return lastFrame;
 }
 
 void UsbCamera::resendFrame(const QVideoFrame &frame)

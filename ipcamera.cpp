@@ -6,31 +6,30 @@ IpCamera::IpCamera(QObject *parent)
     : StreamInterface{parent}
 {
     stopFlag.test_and_set();
-    commitSudokuFlag.clear();
+    routineFinishedFlag.test_and_set();
 }
 
 IpCamera::~IpCamera()
 {
+    IpCamera::stop();
 
+    while (not routineFinishedFlag.test_and_set()) {
+        routineFinishedFlag.clear();
+        QThread::msleep(10);
+    }
 }
 
 void IpCamera::startStreamingRoutine()
 {
-
+    stopFlag.clear();
+    routineFinishedFlag.clear();
     std::ignore = QtConcurrent::run(&IpCamera::startWrapper, this);
-
 }
 
 void IpCamera::stop()
 {
     stopFlag.test_and_set();
 }
-
-void IpCamera::deleteSelf()
-{
-    commitSudokuFlag.test_and_set();
-}
-
 
 void IpCamera::startWrapper()
 {
@@ -40,14 +39,12 @@ void IpCamera::startWrapper()
     AVFormatContext *pFormatContext = avformat_alloc_context();
     if (!pFormatContext) {
         qDebug() << "ERROR could not allocate memory for Format Context";
-        checkSudoku();
         return;
     }
 
 
     if (avformat_open_input(&pFormatContext, "rtsp://admin:admin@192.168.1.10:554", nullptr, nullptr) != 0) {
         qDebug() << "ERROR could not open the file";
-        checkSudoku();
         return;
     }
 
@@ -56,7 +53,6 @@ void IpCamera::startWrapper()
 
     if (avformat_find_stream_info(pFormatContext,  nullptr) < 0) {
         qDebug() << "ERROR could not get the stream info";
-        checkSudoku();
         return;
     }
 
@@ -106,7 +102,6 @@ void IpCamera::startWrapper()
 
     if (video_stream_index == -1) {
         qDebug() << "File does not contain a video stream!";
-        checkSudoku();
         return;
     }
 
@@ -114,21 +109,18 @@ void IpCamera::startWrapper()
     if (!pCodecContext)
     {
         qDebug() << "failed to allocated memory for AVCodecContext";
-        checkSudoku();
         return;
     }
 
     if (avcodec_parameters_to_context(pCodecContext, pCodecParameters) < 0)
     {
         qDebug() << "failed to copy codec params to codec context";
-        checkSudoku();
         return;
     }
 
     if (avcodec_open2(pCodecContext, pCodec, NULL) < 0)
     {
         qDebug() << "failed to open codec through avcodec_open2";
-        checkSudoku();
         return;
     }
 
@@ -136,7 +128,6 @@ void IpCamera::startWrapper()
     if (!pFrame)
     {
         qDebug() << "failed to allocate memory for AVFrame";
-        checkSudoku();
         return;
     }
 
@@ -144,7 +135,6 @@ void IpCamera::startWrapper()
     if (!pPacket)
     {
         qDebug() << "failed to allocate memory for AVPacket";
-        checkSudoku();
         return;
     }
 
@@ -174,7 +164,7 @@ void IpCamera::startWrapper()
     av_frame_free(&pFrame);
     avcodec_free_context(&pCodecContext);
 
-    hibernate();
+    routineFinishedFlag.test_and_set();
     return;
 }
 
@@ -244,6 +234,7 @@ int IpCamera::decodePacket(AVPacket *pPacket, AVCodecContext *pCodecContext, AVF
                        pFrameRGB->linesize[0],
                        QImage::Format_RGB888};
 
+//            qDebug() << "Thread id in IpCamera::startStreamingRoutine" << QThread::currentThreadId();
             mutex.lock();
             lastFrame = im;
             lastFrame.bits();
@@ -257,23 +248,18 @@ int IpCamera::decodePacket(AVPacket *pPacket, AVCodecContext *pCodecContext, AVF
     return 0;
 }
 
-
-void IpCamera::hibernate()
+QImage IpCamera::getLastFrame()
 {
-    forever {
+//    qDebug() << "Thread id in IpCamera::getLastFrame" << QThread::currentThreadId();
+    QImage lastFrameCopy;
+    mutex.lock();
+    lastFrameCopy = lastFrame;
+    lastFrameCopy.bits();
+    mutex.unlock();
 
-        QThread::msleep(200);
-        if (not stopFlag.test_and_set()) {
-            stopFlag.clear();
-            break;
-        }
-
-        if (commitSudokuFlag.test_and_set()) {
-            delete this;
-            break;
-        }
-        else {
-            commitSudokuFlag.clear();
-        }
-    }
+    return lastFrameCopy;
 }
+
+
+
+

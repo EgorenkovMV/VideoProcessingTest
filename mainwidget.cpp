@@ -5,8 +5,11 @@
 #include <QtConcurrent>
 
 namespace Config {
-bool useNNForwarder = true;
-float debugFps = 25.f;
+// TODO: make config pretty
+constexpr bool    useNNForwarder  = true;
+constexpr float   debugFps        = 25.f;
+const     QString modelDirPath    = "../pretrained_models/mobilenet2_coco/";
+
 }
 
 MainWidget::MainWidget(QWidget *parent)
@@ -33,41 +36,33 @@ MainWidget::MainWidget(QWidget *parent)
     });
 
     connect(ui->cbSource, &QComboBox::currentIndexChanged, [this] (int index) {
+        delete stream;
+        ui->pbStop->setText("Stream");
+
         switch (index) {
         case 0:
-            stream->stop();
-            stream->deleteSelf();
-            ui->pbStop->setText("Stream");
-
             stream = new IpCamera();
+            stream->pa.setStartingTime();
+            stream->pa.makeNote("started analysis with IpCamera");
+
             connect(stream, &StreamInterface::frameReady, this, &MainWidget::updateView, Qt::QueuedConnection);
             break;
         case 1:
-            stream->stop();
-            stream->deleteSelf();
-            ui->pbStop->setText("Stream");
-
             stream = new UsbCamera();
+            stream->pa.setStartingTime();
+            stream->pa.makeNote("started analysis with UsbCamera");
+
             connect(stream, &StreamInterface::frameReady, this, &MainWidget::updateView);
-            connect(this, &MainWidget::destroyed, stream, &StreamInterface::deleteLater);
             break;
         case 2:
-            stream->stop();
-            stream->deleteSelf();
-            ui->pbStop->setText("Stream");
-
             stream = new UsbCamera12Bit();
-
             stream->pa.setStartingTime();
-            stream->pa.makeNote("started analysis");
+            stream->pa.makeNote("started analysis with UsbCamera12Bit");
+
             connect(stream, &StreamInterface::frameReady, this, &MainWidget::updateView);
-            connect(this, &MainWidget::destroyed, stream, &StreamInterface::deleteLater);
-            break;
-        default:
             break;
         }
     });
-
 
     connect(ui->pbConnect, &QPushButton::clicked, [this] () {
         qDebug() << "Trying to connect to" << ui->leIp->text() << "port" << ui->sbPort->value();
@@ -90,34 +85,35 @@ MainWidget::MainWidget(QWidget *parent)
     });
 
     forwarder = new NNForwarder(this);
-    forwarder->setFps(Config::debugFps);
+    forwarder->fps = Config::debugFps;
+    forwarder->dirPath = Config::modelDirPath;
 
 }
 
 MainWidget::~MainWidget()
 {
-    stream->stopFlag.test_and_set();
-    stream->commitSudokuFlag.test_and_set();
-    TcpSender *sender;
-    TcpReader *reader;
-    NNForwarder *forwarder;
+    delete stream;
+    delete sender;
+    delete reader;
+    delete forwarder;
     delete ui;
 }
 
 void MainWidget::updateView()
 {
-    stream->mutex.lock();
-    QPixmap pm;
+//    qDebug() << "Thread id in MainWidget::updateView" << QThread::currentThreadId();
+
+    QImage nnResult;
     if (Config::useNNForwarder) {
-        QImage nnResult = forwarder->forward(stream->lastFrame);
-        pm = QPixmap::fromImage(nnResult);
+        nnResult = forwarder->forward(stream->getLastFrame());
     }
     else {
-        pm = QPixmap::fromImage(stream->lastFrame);
+        nnResult = stream->getLastFrame();
     }
-    sender->sendFrame(stream->lastFrame);
-    stream->mutex.unlock();
 
+    sender->sendFrame(nnResult);
+
+    QPixmap pm = QPixmap::fromImage(nnResult);
     ui->lbVideoArea->setPixmap(pm);
 
     stream->pa.makeNote("finished frame processing");

@@ -31,7 +31,6 @@ struct PerformanceAnalyzer
             qDebug() << "curr avg frame process time (usec):" << usecDutationSum / count;
         }
     }
-
 };
 
 
@@ -43,12 +42,9 @@ public:
     virtual ~StreamInterface() { }
     virtual void startStreamingRoutine() = 0;
     virtual void stop() = 0;
-    virtual void deleteSelf() = 0;
+    virtual QImage getLastFrame() = 0;
 
-    QMutex mutex;
-    QImage lastFrame;
     std::atomic_flag stopFlag;
-    std::atomic_flag commitSudokuFlag;
     PerformanceAnalyzer pa;
 
 signals:
@@ -56,16 +52,9 @@ signals:
     void nativeFrameReady();
 
 protected:
+    QImage lastFrame;
 
 
-    void checkSudoku() {
-        if (commitSudokuFlag.test_and_set()) {
-            delete this;
-        }
-        else {
-            commitSudokuFlag.clear();
-        }
-    }
 };
 
 #endif // STREAMINTERFACE_H

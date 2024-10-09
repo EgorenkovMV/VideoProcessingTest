@@ -52,7 +52,9 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost 1.74.0 COMPONENTS crc)
 
 
+
 find_package(QT NAMES Qt6 Qt5)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Concurrent REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Multimedia REQUIRED)
@@ -94,8 +96,8 @@ endif()
 
 target_include_directories(VideoProcessingTest PRIVATE ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR}
     ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR} ${SWSCALE_INCLUDE_DIR})
-target_link_libraries(VideoProcessingTest PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::Concurrent Qt${QT_VERSION_MAJOR}::Multimedia
+target_link_libraries(VideoProcessingTest PRIVATE Qt${QT_VERSION_MAJOR}::Core
+    Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Concurrent Qt${QT_VERSION_MAJOR}::Multimedia
     ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${SWSCALE_LIBRARY}
     ${OpenCV_LIBS})
 

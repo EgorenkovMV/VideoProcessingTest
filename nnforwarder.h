@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <QImage>
+#include <QString>
+#include <QJsonDocument>
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include <opencv2/dnn/all_layers.hpp>
@@ -16,7 +18,9 @@ public:
 
     QImage forward(const QImage &frame);
     void initVideoToFileWriter(QSize frameSize);
-    void setFps(float fps = 30);
+
+    float fps;
+    QString dirPath;
 
 private:
     cv::dnn::Net model;
@@ -24,7 +28,8 @@ private:
 
     cv::VideoWriter videoToFileWriter;
     bool videoToFileInited = false;
-    float fps;
+
+    QJsonDocument metadata;
 };
 
 #endif // NNFORWARDER_H

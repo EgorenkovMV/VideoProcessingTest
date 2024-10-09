@@ -73,7 +73,7 @@ void NNForwarder::initVideoToFileWriter(QSize frameSize)
     videoToFileInited = true;
 }
 
-void NNForwarder::setFps(float fps)
-{
-    this->fps = fps;
-}
+
+
+
+
